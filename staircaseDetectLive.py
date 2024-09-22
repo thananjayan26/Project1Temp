@@ -10,6 +10,10 @@ import cv2
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.preprocessing import image
+import pygame  # Import pygame for audio output
+
+# Initialize pygame mixer
+pygame.mixer.init()
 
 # Load the trained model
 model = tf.keras.models.load_model('staircase_detection_model.h5')
@@ -30,6 +34,12 @@ def preprocess_frame(frame):
     img_array = np.expand_dims(img_array, axis=0)
     return img_array
 
+# Flag to prevent repeating the warning sound
+played_warning = False
+
+# Load the warning sound
+pygame.mixer.music.load('warning_staircase.mp3')
+
 # Start capturing video
 while True:
     # Capture frame-by-frame
@@ -47,17 +57,24 @@ while True:
     confidence = np.max(prediction) * 100  # Convert to percentage
     predicted_class = class_names[np.argmax(prediction)]
 
-    # Only display if confidence is above 80%
-    if confidence >= 95:
+    # Only display if confidence is above 99%
+    if confidence >= 99:
         # Draw a rectangle at the center of the frame
         height, width, _ = frame.shape
         x1, y1 = int(width * 0.25), int(height * 0.25)  # Top-left corner of the box
         x2, y2 = int(width * 0.75), int(height * 0.75)  # Bottom-right corner of the box
-        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)  # Green box
         
         # Display the prediction and confidence on the frame
         text = f'{predicted_class} ({confidence:.2f}%)'
         cv2.putText(frame, text, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
+        
+        # Play the warning sound if not already played
+        if not played_warning:
+            pygame.mixer.music.play()  # Play the warning audio
+            played_warning = True  # Set the flag to True after playing
+
+    else:
+        played_warning = False  # Reset the flag if confidence drops below 99%
 
     # Show the frame with prediction
     cv2.imshow('Staircase Detection', frame)
@@ -69,3 +86,6 @@ while True:
 # Release the capture and close windows
 cap.release()
 cv2.destroyAllWindows()
+
+# Quit pygame mixer
+pygame.mixer.quit()
